@@ -137,15 +137,15 @@ func (cache *LRUCache) write(key string, data interface{}) (qdata, error) {
 	prevnode, ok := cache.prevnodeLookup[key]
 	if !ok {
 		prevnode = cache.Q.push(qdata{key, data})
-		cache.prevnodeLookup[key] = prevnode
 		cache.size++
 	}
-	if prevnode == nil {
-		fmt.Println("previous node -> ", prevnode)
-	} else {
-		fmt.Println("previous node -> ", prevnode.data)
-	}
+	oldTail := cache.Q.tail
 	cache.Q.movetobottom(prevnode)
+	if cache.Q.tail != cache.Q.head {
+		cache.prevnodeLookup[key] = oldTail
+	} else {
+		cache.prevnodeLookup[key] = nil
+	}
 	cache.prevnodeLookup[cache.Q.head.data.key] = nil
 	if cache.size > cache.capacity {
 		node, _ := cache.Q.pop()
