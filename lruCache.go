@@ -122,10 +122,23 @@ func (cache *LRUCache) read(key string) (interface{}, error) {
 	return node.data, nil
 }
 
-func (cache *LRUCache) top() interface{} {
-	if cache.size > 0 {
-		return cache.Q.head.data
+func (cache *LRUCache) touch(key string) error {
+	prevnode, ok := cache.prevnodeLookup[key]
+	if !ok {
+		return errors.New("No data for key " + key)
 	}
+	if cache.Q.tail == cache.Q.head {
+		// only one node
+		cache.prevnodeLookup[key] = nil
+	} else {
+		// more than one node,
+		// this node will become new tail
+		// so the current tail should be it's prevnode
+		cache.prevnodeLookup[key] = cache.Q.tail
+	}
+	cache.Q.movetobottom(prevnode)
+	// Whatever the head be, it's prev is nil
+	cache.prevnodeLookup[cache.Q.head.data.key] = nil
 	return nil
 }
 
@@ -137,16 +150,10 @@ func (cache *LRUCache) write(key string, data interface{}) (qdata, error) {
 	prevnode, ok := cache.prevnodeLookup[key]
 	if !ok {
 		prevnode = cache.Q.push(qdata{key, data})
+		cache.prevnodeLookup[key] = prevnode
 		cache.size++
 	}
-	oldTail := cache.Q.tail
-	cache.Q.movetobottom(prevnode)
-	if cache.Q.tail != cache.Q.head {
-		cache.prevnodeLookup[key] = oldTail
-	} else {
-		cache.prevnodeLookup[key] = nil
-	}
-	cache.prevnodeLookup[cache.Q.head.data.key] = nil
+	cache.touch(key)
 	if cache.size > cache.capacity {
 		node, _ := cache.Q.pop()
 		delete(cache.prevnodeLookup, node.data.key)
